@@ -1,0 +1,187 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "sheetId": "1BEW9WM6j7BnjLXyiSu6Ex28BQ0PdKIYKefuM5BP6LVw",
+        "range": "Sheet1!A2:B100",
+        "options": {
+          "header": "firstRow"
+        }
+      },
+      "name": "GoogleSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Your Google Sheets Credential Name"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://youtube-transcript-api.p.rapidapi.com/transcript",
+        "options": {
+          "method": "POST",
+          "body": {
+            "video_id": "={{ $json.URL.split('v=')[1].split('&')[0] }}"
+          },
+          "headers": {
+            "X-RapidAPI-Key": "={{ $credentials.rapidApiKey.apiKey }}",
+            "Content-Type": "application/json"
+          }
+        },
+        "name": "FetchTranscript",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          450,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "YOUR_CREDENTIAL_ID",
+            "name": "Your RapidAPI Credential Name"
+          }
+        }
+      },
+      "name": "FetchTranscript",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.deepseek.com/chat/completions",
+        "options": {
+          "method": "POST",
+          "body": {
+            "model": "deepseek-chat",
+            "messages": [
+              {
+                "role": "user",
+                "content": "Summarize this YouTube transcript in the following JSON format:\n\n```json\n{\n  \"Context\": \"...\",\n  \"Key Points\": [\n    \"...\",\n    \"...\"\n  ],\n  \"Implications/Outcome\": \"...\",\n  \"Next Steps\": [\n    \"...\",\n    \"...\"\n  ]\n}\n```\n\nTranscript: {{ $json.text }}"
+              }
+            ],
+            "max_tokens": 1000
+          },
+          "headers": {
+            "Authorization": "Bearer {{ $credentials.deepseekApi.apiKey }}",
+            "Content-Type": "application/json"
+          }
+        },
+        "name": "DeepSeek_Summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          650,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "YOUR_CREDENTIAL_ID",
+            "name": "Your DeepSeek Credential Name"
+          }
+        }
+      },
+      "name": "DeepSeek_Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "createPage",
+        "parent": {
+          "__rl": true,
+          "value": "1a383b71d8f381a5b267d4347a8524c0",
+          "mode": "id",
+          "id": "1a383b71d8f381a5b267d4347a8524c0"
+        },
+        "properties": {
+          "title": {
+            "__rl": true,
+            "value": "={{ $('GoogleSheets').item.json.Title || 'YouTube Video Summary' }}",
+            "mode": "expression"
+          }
+        },
+        "children": [
+          {
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+              "rich_text": [
+                {
+                  "type": "text",
+                  "text": {
+                    "content": "={{ $json.choices[0].message.content }}"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "options": {}
+      },
+      "name": "Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Your Notion Credential Name"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GoogleSheets": {
+      "main": [
+        [
+          {
+            "node": "FetchTranscript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchTranscript": {
+      "main": [
+        [
+          {
+            "node": "DeepSeek_Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek_Summary": {
+      "main": [
+        [
+          {
+            "node": "Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
